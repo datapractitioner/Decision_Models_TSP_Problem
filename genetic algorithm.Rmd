@@ -1,0 +1,336 @@
+---
+title: "cl1"
+author: "Lacapra Daniele"
+date: "12 giugno 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(GA)
+```
+ PATH FRA CLUSTER
+ ```{r}
+setwd("C:\\Users\\danie\\Desktop\\Decision Models\\Progetto")
+```
+
+```{r}
+library(GA)
+cl1 <- read.csv("cluster1.csv")
+cl1 <- cl1[,3:4]
+(cl1)
+
+set.seed(1324)
+cluster1 <- kmeans(cl1, 20)
+#faccio i 20 sotto-cluster nel cluster 1
+
+cl1$cluster=as.factor(cluster1$cluster)
+Cluster1 <- as.matrix(cluster1$centers)
+Cluster1
+head(cl1)
+distance <- dist(Cluster1, method = "euclidean", diag = FALSE, upper = FALSE, p = 2)
+
+set.seed(1234)
+
+
+tourLength <- function(tour, distMatrix) {
+  route <- embed(tour, 2)[, 2:1]
+  sum(distMatrix[route])
+}
+# inverse of the total distance is the fitness
+tpsFitness <- function(tour, ...) {
+  1/tourLength(tour, ...)
+}
+
+
+
+GA.fit <- ga(type = "permutation", 
+             fitness = tpsFitness, 
+             distMatrix = distance, 
+             min   = 1, 
+             max = attr(distance, "Size"), 
+             popSize = 200, 
+             maxiter = 1000, 
+             run = 100, 
+             pmutation = 0.2,
+             keepBest = TRUE)
+
+```
+
+
+```{r}
+summary(GA.fit)
+GA.fit@solution
+tour <- GA.fit@solution[1, ]
+```
+```{r}
+mds <- cmdscale(distance)
+x <- mds[, 1]
+y <- -mds[, 2]
+# n <- length(x)
+plot(x, y, type = "n", asp = 1, xlab = "", ylab = "", main = "Tour after GA converged")
+points(x, y, pch = 16, cex = 1.5, col = "grey")
+abline(h = pretty(range(x), 10), 
+       v = pretty(range(y), 10), 
+       col = "lightgrey")
+tour <- GA.fit@solution[1, ]
+tour <- c(tour, tour[1])
+n <- length(tour)
+arrows(x[tour[-n]], 
+       y[tour[-n]], 
+       x[tour[-1]], 
+       y[tour[-1]], 
+       length = 0.10, 
+       angle = 45, 
+       col = "red", 
+       lwd = 1)
+text(x, y - 100, labels(distance), cex = 0.8)
+
+x[tour[-n]]
+```
+
+PATH ENTRO I CLUSTER
+
+```{r}
+setwd("C:\\Users\\danie\\Desktop\\Decision Models\\Progetto\\cluster1")
+cl1 <- read.csv("cluster1.csv")
+cl1 <- cl1[,3:4]
+
+tourLength <- function(tour, distMatrix) {
+  tour <- c(tour, tour[1])
+  route <- embed(tour, 2)[, 2:1]
+  sum(distMatrix[route])
+}
+# inverse of the total distance is the fitness
+tpsFitness <- function(tour, ...) {
+  1/tourLength(tour, ...)
+}
+
+set.seed(1324)
+cluster1 <- kmeans(cl1, 20)
+#faccio i 20 sotto-cluster nel cluster 1
+cl1$cluster=as.factor(cluster1$cluster)
+Cluster1 <- as.matrix(cluster1$centers)
+
+
+vett <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+for (i in vett) {
+  temp <- subset(cl1, cluster == i)
+  file <- as.character(paste("cl1_", i, ".csv", sep="")) 
+  a <- assign(file, temp)
+  a <- data.frame(a)
+  write.csv(a, file)
+  }
+
+```
+
+
+
+```{r}
+vett <- c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20)
+length_1 <- list()
+
+for (i in vett){
+  file <- as.character(paste("cl1_", i, ".csv", sep=""))
+  cl1_ <- read.csv(file)
+  cl1_ <- cl1_[,2:3]
+  distance <- dist(cl1_, method = "euclidean", diag = FALSE, upper = FALSE, p = 2)
+
+  GA.fit <- ga(type = "permutation", 
+             fitness = tpsFitness, 
+             distMatrix = distance, 
+             min   = 1, 
+             max = attr(distance, "Size"), 
+             popSize = 50, 
+             maxiter = 5000, 
+             run = 100, 
+             pmutation = 0.2,
+             keepBest = TRUE)
+  length_1[[i]] <- min(apply(GA.fit@solution, 1, tourLength, distance))
+}
+
+cl1
+```
+
+```{r}
+distance_within_cluster <- list()
+length_1
+distance_within_cluster[[1]] <- Reduce("+", GA.fit@solution[1,])
+distance_within_cluster
+length_1
+Reduce("+", GA.fit@solution[1,])
+GA.fit@solution
+dim(GA.fit@solution)
+```
+
+```{r}
+mds <- cmdscale(distance)
+x <- mds[, 1]
+y <- -mds[, 2]
+# n <- length(x)
+plot(x, y, type = "n", asp = 1, xlab = "", ylab = "", main = "Tour after GA converged")
+points(x, y, pch = 16, cex = 1.5, col = "grey")
+abline(h = pretty(range(x), 10), 
+       v = pretty(range(y), 10), 
+       col = "lightgrey")
+
+tour <- GA.fit@solution[1, ]
+tour <- c(tour, tour[1])
+n <- length(tour)
+arrows(x[tour[-n]], 
+       y[tour[-n]], 
+       x[tour[-1]], 
+       y[tour[-1]], 
+       length = 0.10, 
+       angle = 45, 
+       col = "steelblue", 
+       lwd = 1)
+text(x, y - 100, row.names(cl1_), cex = 0.8)
+n <- length(tour)
+lines(x[tour[-n]], y[tour[-n]], col = "red", lwd = 1)
+```
+
+```{r}
+solution <- GA.fit@solution
+row.names(solution) <- paste0("nrow",i)
+solution <- data.frame(t(solution))
+solution[,paste0("position",i)] <- row.names(solution)
+row.names(solution) <- 1:nrow(solution)
+solution <- merge(solution, cl1_, 
+                    by.x = paste0("nrow",i), by.y = paste0("nrow"))
+colnames(solution) <- c("nrow", "position","nrow2", "id", "x","y", "cluster", "nrow3")
+percorso <- rbind(percorso, solution["id"])
+```
+```{r}
+temp1 <- sol
+file <- as.character(paste("sol", i, ".csv", sep="")) 
+a <- assign(file, temp1)
+a <- data.frame(a)
+write.csv(a, file)
+```
+
+CENTROIDI DEI 10 CLASTER
+
+```{r}
+cl1 <- read.csv("cluster1.csv")
+x_cl1 <- mean(Cluster1[,1]) 
+y_cl1 <- mean(Cluster1[,2])
+cl1_mean <- cbind(x_cl1, y_cl1)
+x_cl2 <- mean(Cluster2[,1])
+y_cl2 <- mean(Cluster2[,2])
+cl2_mean <- cbind(x_cl2, y_cl2)
+cl2_mean
+cl_tot <- rbind(cl1_mean, cl2_mean)
+cl_tot
+x_cl3 <- mean(Cluster3[,1]) 
+y_cl3 <- mean(Cluster3[,2])
+cl3_mean <- cbind(x_cl3, y_cl3)
+cl_tot <- rbind(cl_tot, cl3_mean)
+x_cl4 <- mean(Cluster4[,1]) 
+y_cl4 <- mean(Cluster4[,2])
+cl4_mean <- cbind(x_cl4, y_cl4)
+cl_tot <- rbind(cl_tot, cl4_mean)
+cl_tot
+x_cl5 <- mean(Cluster5[,1]) 
+y_cl5 <- mean(Cluster5[,2])
+cl5_mean <- cbind(x_cl5, y_cl5)
+cl_tot <- rbind(cl_tot, cl5_mean)
+x_cl6 <- mean(Cluster6[,1]) 
+y_cl6 <- mean(Cluster6[,2])
+cl6_mean <- cbind(x_cl6, y_cl6)
+cl_tot <- rbind(cl_tot, cl6_mean)
+x_cl7 <- mean(Cluster7[,1]) 
+y_cl7 <- mean(Cluster7[,2])
+cl7_mean <- cbind(x_cl7, y_cl7)
+cl_tot <- rbind(cl_tot, cl7_mean)
+x_cl8 <- mean(Cluster8[,1]) 
+y_cl8 <- mean(Cluster8[,2])
+cl8_mean <- cbind(x_cl8, y_cl8)
+cl_tot <- rbind(cl_tot, cl8_mean)
+x_cl9 <- mean(Cluster9[,1]) 
+y_cl9 <- mean(Cluster9[,2])
+cl9_mean <- cbind(x_cl9, y_cl9)
+cl_tot <- rbind(cl_tot, cl9_mean)
+x_cl10 <- mean(Cluster10[,1]) 
+y_cl10 <- mean(Cluster10[,2])
+cl10_mean <- cbind(x_cl10, y_cl10)
+cl_tot <- rbind(cl_tot, cl10_mean)
+cl_tot
+```
+
+```{r}
+cl_tot <- as.matrix(cl_tot)
+colnames(cl_tot) <- c("x", "y")
+row.names(cl_tot) <-c(1,2,3,4,5,6,7,8,9,10)
+cl_tot
+```
+```{r}
+distance <- dist(cl_tot, method = "euclidean", diag = FALSE, upper = FALSE, p = 2)
+distance
+```
+
+```{r}
+set.seed(1234)
+GA.fit <- ga(type = "permutation", 
+             fitness = tpsFitness, 
+             distMatrix = distance, 
+             min   = 1, 
+             max = attr(distance, "Size"), 
+             popSize = 200, 
+             maxiter = 1000, 
+             run = 100, 
+             pmutation = 0.2,
+             keepBest = TRUE)
+
+
+```
+
+```{r}
+mds <- cmdscale(distance)
+x <- mds[, 1]
+y <- -mds[, 2]
+# n <- length(x)
+plot(x, y, type = "n", asp = 1, xlab = "", ylab = "", main = "Tour after GA converged")
+points(x, y, pch = 16, cex = 1.5, col = "grey")
+abline(h = pretty(range(x), 10), 
+       v = pretty(range(y), 10), 
+       col = "lightgrey")
+
+tour <- GA.fit@solution[1, ]
+tour <- c(tour, tour[1])
+n <- length(tour)
+arrows(x[tour[-n]], 
+       y[tour[-n]], 
+       x[tour[-1]], 
+       y[tour[-1]], 
+       length = 0.10, 
+       angle = 45, 
+       col = "steelblue", 
+       lwd = 1)
+text(x, y - 100, row.names(cl_tot), cex = 0.8)
+x[tour[-1]]
+```
+
+myEuclid <- function(points1, points2) {
+    distanceMatrix <- matrix(NA, nrow=dim(points1)[1], ncol=dim(points2)[1])
+    for(i in 1:nrow(points2)) {
+        distanceMatrix[,i] <- sqrt(rowSums(t(t(points1)-points2[i,])^2))
+    }
+    distanceMatrix
+}
+
+UNIONE SOLUZIONI
+```{r}
+setwd("C:\\Users\\danie\\Desktop\\Decision Models\\Progetto\\cluster6")
+percorso_ottimo <- data.frame(ncol=3)
+colnames(percorso_ottimo) <- "id"
+vett <- c(6,4,7,10,14,17,18,20,2,1,5,8,12,19,16,11,13,9,15,3)
+for (i in vett){
+  file <- as.character(paste("sol", i, ".csv", sep=""))
+  sol <- read.csv(file)
+  percorso_ottimo <- append(percorso_ottimo, sol$id)
+  percorso_ottimo <- data.frame(matrix(unlist(percorso_ottimo), byrow=T))
+  colnames(percorso_ottimo)<- "id"
+}
+percorso_ottimo
+
