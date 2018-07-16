@@ -4,5 +4,5 @@ Source Code
 In this repository is available the source code applied on the resolution of the TSP problem.
 Each file contains all the approches presented in the report (KMeans, DBSCAN, Genetic Algorithm, Ant Optimization and Greedy approach)
 
-![Screenshot](babbo_image.png)
+![immagine](https://github.com/ttiziano/TSP_Problem/tree/master/images/babbo_image.png)
 
